@@ -1,17 +1,21 @@
-# DA14531 Custom Makefile Build (Blinky Example Tested)
+# DA14531 Custom Makefile Build
 This repository provides a minimal Makefile-based build system for the Renesas DA14531 using SDK version 6.0.24.1464.
 It allows you to build firmware (.elf, .hex, .bin, .img) without needing e²studio.
+
+Two toolchains are supported:  
+- **GCC** (main branch), tested with the official Renesas blinky example.  
+- **LLVM/Clang** (separate branch), tested with the official Renesas BLE App Sleep Mode example.
 
 ## 1. Why this Makefile?
 The official Renesas SDK is designed for use with e²studio (Eclipse-based IDE). While e²studio works, I chose to create my own Makefile for the following reasons:
 ### My main reasons
 1. Easier integration with projects - Being independent from e²studio provides better version control for my projects.
-2. LLVM compiler issues – the LLVM flow always gave a busybox error on Windows, and I could only build successfully on Linux.
+2. LLVM compiler issues – the LLVM e²studio flow always gave a busybox error on Windows, and I could only build successfully using e²studio on Linux.
 3. Simpler path management – with Makefiles, adding or modifying include paths is straightforward. e²studio generates very complex Makefiles automatically, which are harder to fine-tune.
 ### Additional benefits of this Makefile approach
 1. It's lightweight. You can use a code editor of your choice instead of needing to download the e²Studio IDE.
 2. It's portable. Works in MSYS2 (Windows) or Linux with make + arm-none-eabi-gcc.
-3. All compiler/linker flags are visible and editable
+3. All compiler/linker flags are visible and editable.
 ### Why you might still use e²studio
 - Built-in debugger support (SEGGER J-Link, breakpoints, variable watch).
 - Project wizards and templates for quick setup.
