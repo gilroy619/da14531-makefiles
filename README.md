@@ -33,7 +33,7 @@ In short:
 - **Caveats:** Some important caveats and startup considerations for the DA14531 are discussed in [Section 5: Minor Code Modifications](#5-minor-code-modifications).
 
 ## 3. Requirements
-- arm-none-eabi-gcc (version tested: 10.3.1.20210824)
+- LLVM/Clang (version tested: LLVMEmbeddedToolchainForArm-17.0.1-Windows-x86_64)
 - MSYS2/MinGW64 or Linux shell
 - Renesas DA145xx SDK (version tested: 6.0.24.1464)
 
@@ -43,18 +43,30 @@ This structure is meant to match the Renesas examples.
 project_root/
 ├── Makefile
 └── src/
-    ├── main.c
+    ├── llvm_crt.c
+    ├── user_sleepmode.c
+    ├── user_sleepmode.h
+    ├── user_sleepmode_task.c
+    ├── user_sleepmode_task.h
     ├── platform/
     │   └── user_periph_setup.c
+    ├── custom_profile/
+    │   ├── user_custs_config.c
+    │   ├── user_custs_config.h
+    │   ├── user_custs1_def.c
+    │   └── user_custs1_def.h
     └── config/
         ├── da1458x_config_basic.h
         ├── da1458x_config_advanced.h
         ├── da14531_config_basic.h
         ├── da14531_config_advanced.h
+        ├── user_callback_config.h
+        ├── user_config.h
+        ├── user_modules_config.h
         ├── user_periph_setup.h
         └── user_profiles_config.h
 ```
-The ```main``` and ```user_periph_setup``` files can be found in the blinky example project. All the config files can be found in the empty_peripheral_template example project.
+All Renesas example files can be found in the ble_app_sleepmode folder. Only llvm_crt.c needs to be added to the src folder.
 
 ## 5. Minor Code Modifications
 ### 1. Ensure peripheral initialization in production mode
@@ -70,37 +82,8 @@ Also, add the following lines to ```user_periph_init.h```:
 #define PRODUCTION_DEBUG_PIN    GPIO_PIN_5
 ```
 This UART is needed by the ```hardfault_handler.c``` file when we do ```#define CFG_PRODUCTION_DEBUG_OUTPUT```.
-### 2. Handle the watchdog timer
-In production mode, the watchdog runs by default, as it is defined in the ```da14531_config_advanced.h``` example code provided by Renesas. If not handled, it will reset the chip.
-There are two options:
-#### Option 1: Disable watchdog permanently
-In ```da14531_config_basic.h```, modify/add:
-```c
-#undef CFG_WDOG
-```
-Then modify ```main.c``` as follows:
-```c
-    ...
-    system_init();
-    while ((GetWord16(SYS_STAT_REG) & XTAL32M_SETTLED) == 0); // Required. Otherwise, DA14531 may get stuck in a bootloop
-    blinky_test();
-    ...
-```
-> **Note:** The line checking ```XTAL32M_SETTLED``` is critical. Omitting it can cause the chip to hang at startup.
-#### Option 2: Freeze watchdog at runtime by adding the following in ```main.c```:
-```c
-#include "arch_wdg.h"
 
-    ...
-    system_init();
-    arch_asm_delay_us(10); // Required. Otherwise, DA14531 may get stuck in a bootloop
-    wdg_freeze();
-    while ((GetWord16(SYS_STAT_REG) & XTAL32M_SETTLED) == 0); // Required. Otherwise, DA14531 may get stuck in a bootloop
-    blinky_test();
-    ...
-```
-> **Note:** Both the ```arch_asm_delay_us(10)``` and ```XTAL32M_SETTLED``` checks are necessary to prevent bootlooping when freezing the watchdog.
-### 3. Prevent unintended resets on P0_0 (HW reset pin) (For DA14531MOD or similar designs)
+### 2. Prevent unintended resets on P0_0 (HW reset pin) (For DA14531MOD or similar designs)
 On the DA14531MOD and similar designs using external SPI flash, P0_0 defaults to a hardware reset pin. However, it is also connected to the SPI flash MOSI pin.
 If you are using the flash to store code or data, you must disable the hardware reset function on P0_0. Do this at the beginning of the ```periph_init()``` function in ```user_periph_setup.c```:
 ```c
@@ -118,8 +101,9 @@ Without this change, the SPI flash activity may inadvertently trigger resets.
 > Make sure to read [Section 7: Flashing](#7-flashing), so you understand the full flashing process before attempting these steps.
 
 ## 6. Setup Instructions
-- Clone the makefile into your project.
+- Clone the makefile and llvm_crt.c into your project.
 - Run ```export SDK_ROOT=/path/to/DA145xx_SDK/6.0.24.1464``` before building (or edit it inside the Makefile).
+- Run ```export LLVM_BIN=/path/to/llvm_arm/LLVMEmbeddedToolchainForArm-17.0.1-Windows-x86_64/bin``` before building (or edit it inside the Makefile).
 - Run ```make```.
 
 This will generate the following in the build/ folder:
